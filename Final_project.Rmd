@@ -1,0 +1,620 @@
+---
+title: "Final Project"
+author: "Marco Sciorilli"
+date: "17/12/2020"
+output: html_document
+    
+institute: University of Trieste
+subtitle: Statical Methods for Data Science
+fontsize: 10pt
+---
+
+
+Perform some explanatory analysis for your data, especially by use of graphical tools.
+```{r setup, include=FALSE}
+library(DAAG)
+library(MASS)
+data<-read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv")
+```
+
+```{r setup, include=FALSE}
+dataupdated<-subset(data, data >= "2020-09-01T17:00:00")
+dataupdatedLombardia<-subset(dataupdated, codice_regione == "3")
+dataupdatedLombardiacleaned <-subset(dataupdatedLombardia, select = -c(stato,codice_regione,lat,long,denominazione_regione,note,note_test,note_casi,codice_nuts_1,codice_nuts_2,data) )
+dataupdatedLombardiacleaned$giorno<- seq.int(nrow(dataupdatedLombardiacleaned))
+dataupdatedLombardiacleaned$giorno_settimana<-seq.int(nrow(dataupdatedLombardiacleaned))
+dataupdatedLombardiacleaned$picco<-seq.int(nrow(dataupdatedLombardiacleaned))
+for (i in 7:length(dataupdatedLombardia[,1])) {
+  if(i%%7==0){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"martedi"
+  }
+  if(i%%7==1){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"mercoledi"  }
+  if(i%%7==2){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"giovedi"  }
+  if(i%%7==3){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"venerdi"  }
+  if(i%%7==4){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"sabato" }
+  if(i%%7==5){
+dataupdatedLombardiacleaned$giorno_settimana[i]<- "domenica"}
+  if(i%%7==6){
+dataupdatedLombardiacleaned$giorno_settimana[i]<-"lunedi"  }
+
+}
+dataupdatedLombardiacleaned$giorno_settimana[1]<-"martedi"
+dataupdatedLombardiacleaned$giorno_settimana[2]<-"mercoledi"
+dataupdatedLombardiacleaned$giorno_settimana[3]<-"giovedi"
+dataupdatedLombardiacleaned$giorno_settimana[4]<-"venerdi"
+dataupdatedLombardiacleaned$giorno_settimana[5]<-"sabato"
+dataupdatedLombardiacleaned$giorno_settimana[6]<- "domenica"
+dataupdatedLombardiacleaned$giorno_settimana[7]<-"lunedi"
+for (i in 1:35){      #83 punto più credibile
+dataupdatedLombardiacleaned$picco[i]<-"pre-picco"
+}
+for (i in 36:83){ #83 punto più credibile
+dataupdatedLombardiacleaned$picco[i]<-"picco"
+}
+for (i in 84:length(dataupdatedLombardia[,1])) {
+dataupdatedLombardiacleaned$picco[i]<-"post-picco"
+}
+dulc<-dataupdatedLombardiacleaned
+```
+
+```{r}
+library("ggpubr")
+library(ggplot2)
+for (i in 1:20) {  
+      file_name = paste("untouched", i, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+#print(cor.test(dulc[,i],dulc[,7], method=c("spearman")))
+print(ggplot(dulc,  aes(dulc[,i],dulc[,5])) + 
+  geom_point(aes()) +
+  theme_minimal()+
+  theme(legend.position = "top")+
+  xlab(colnames(dulc[i]))+
+  ylab(colnames(dulc[5])))
+dev.off()
+}
+
+```
+
+
+```{r}
+dataupdatedLombardiacleaned <-subset(dataupdatedLombardiacleaned, select = -c(tamponi_test_antigenico_rapido,tamponi_test_molecolare,totale_positivi_test_antigenico_rapido,totale_positivi_test_molecolare, casi_da_screening, casi_da_sospetto_diagnostico, ingressi_terapia_intensiva) )
+dulc<-dataupdatedLombardiacleaned
+dulcnonlog<-dataupdatedLombardiacleaned
+
+library(PerformanceAnalytics)
+file_name = paste("cross", 1, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,1:5],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("cross", 2, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,6:7],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("cross", 3, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,8:9],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("cross", 4, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,10:13],main="Esplorazione nuovi casi")
+dev.off()
+```
+
+
+
+```{r}
+dulc<- log(dulc[1:12])
+dulc$giorno<-log( seq.int(nrow(dulc)))
+dulc$giorno_settimana<-seq.int(nrow(dulc))
+dulc$picco<-seq.int(nrow(dulc))
+for (i in 7:length(dataupdatedLombardia[,1])) {
+  if(i%%7==0){
+dulc$giorno_settimana[i]<-"martedi"
+  }
+  if(i%%7==1){
+dulc$giorno_settimana[i]<-"mercoledi"  }
+  if(i%%7==2){
+dulc$giorno_settimana[i]<-"giovedi"  }
+  if(i%%7==3){
+dulc$giorno_settimana[i]<-"venerdi"  }
+  if(i%%7==4){
+dulc$giorno_settimana[i]<-"sabato" }
+  if(i%%7==5){
+dulc$giorno_settimana[i]<- "domenica"}
+  if(i%%7==6){
+dulc$giorno_settimana[i]<-"lunedi"  }
+
+}
+dulc$giorno_settimana[1]<-"martedi"
+dulc$giorno_settimana[2]<-"mercoledi"
+dulc$giorno_settimana[3]<-"giovedi"
+dulc$giorno_settimana[4]<-"venerdi"
+dulc$giorno_settimana[5]<-"sabato"
+dulc$giorno_settimana[6]<- "domenica"
+dulc$giorno_settimana[7]<-"lunedi"
+for (i in 1:35){      #83 punto più credibile
+dulc$picco[i]<-"pre-picco"
+}
+for (i in 36:83){      #83 punto più credibile
+dulc$picco[i]<-"picco"
+}
+for (i in 84:length(dataupdatedLombardia[,1])) {
+dulc$picco[i]<-"post-picco"
+}
+dulc$colore<-seq.int(nrow(dulc))
+
+for (i in 1:65){      #83 punto più credibile
+dulc$colore[i]<-"bianco"
+}
+for (i in 66:88) {
+dulc$colore[i]<-"rosso"
+}
+for (i in 89:103) {
+dulc$colore[i]<-"arancione"
+}
+for (i in 104:114) {
+dulc$colore[i]<-"giallo"
+}
+for (i in 115:118) {
+dulc$colore[i]<-"rosso"
+}
+for (i in 119:121) {
+dulc$colore[i]<-"arancione"
+}
+for (i in 122:125) {
+dulc$colore[i]<-"rosso"
+}
+for (i in 126:126) {
+dulc$colore[i]<-"rosso"
+}
+for (i in 127:128) {
+dulc$colore[i]<-"rosso"
+}
+for (i in 129:130) {
+dulc$colore[i]<-"giallo"
+}
+for (i in 131:137) {
+dulc$colore[i]<-"arancione"
+}
+for (i in 138:145) {
+dulc$colore[i]<-"rosso"
+}
+
+for (i in 146:153) {
+dulc$colore[i]<-"arancione"
+}
+
+for (i in 144:length(dataupdatedLombardia[,1])) {
+dulc$colore[i]<-"giallo"
+}
+for (i in 1:13) {
+      file_name = paste("touched", i, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+#print(cor.test(dulc[,i],dulc[,7], method=c("spearman")))
+print(ggplot(dulc,  aes(dulc[,i],dulc[,5])) + 
+  geom_point(aes(color=as.factor(dulc[,15]))) +
+  theme_minimal()+
+  theme(legend.position = "top")+
+  xlab(colnames(dulc[i]))+
+  ylab(colnames(dulc[5])))
+dev.off()
+}
+
+
+library(PerformanceAnalytics)
+file_name = paste("crossnew", 1, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,1:5],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("crossnew", 2, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,6:7],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("crossnew", 3, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,8:9],main="Esplorazione nuovi casi")
+dev.off()
+file_name = paste("crossnew", 4, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+chart.Correlation(dulc[,10:13],main="Esplorazione nuovi casi")
+dev.off()
+```
+Da 1 settembre a 5 novembre zona bianca
+
+Da 6 novembre a 28 novembre zona rossa 
+
+da 29 novembre a 12 dicembre zona arancione
+da 13 a 23 zona gialla
+da 24 a 27 rossa 
+28-29-30 arancione
+31 - 3 rossa
+4 arancione
+5-6 rossa
+
+7-8 gialla
+9-15 arancione
+16-23 zona rossa
+24-1 febbraio arancione
+
+
+
+
+
+
+totale_ospedalizzati
+totale_positivi
+variazione_totale_positivi
+
+sono ad alto rischio di ridondanza
+
+
+
+
+
+Describe the quality of the data and discuss whether and how a plausible statistical model could be posed.
+
+Build a model for your response variable Y. To this aim you can adopt any among the regression techniques covered during the course. Comment the estimates from the best model obtained.
+
+imposto un modello con tutte le variabili con andamento simile, controllo la multicollinearità
+
+Seleziono solo la variabile con p-value minore
+```{r}
+dulc.lm1 <- lm(totale_positivi ~  terapia_intensiva+ricoverati_con_sintomi+totale_ospedalizzati+isolamento_domiciliare, data = dulc)
+summary(dulc.lm1)
+(vif(dulc.lm1))
+library(stargazer)
+stargazer((vif(dulc.lm1)), type = "latex", out = "vif.tex")
+library(xtable)
+xtable(anova(dulc.lm1))
+anova(dulc.lm1)
+```
+
+```{r}
+dulc.lm1.1 <- lm(totale_positivi ~  terapia_intensiva, data = dulc)
+dulc.lm1.2 <- lm(totale_positivi ~  (terapia_intensiva)* picco, data = dulc)
+dulc.lm1.3 <- lm((totale_positivi) ~ I((terapia_intensiva)^2)+I((terapia_intensiva)), data = dulc)
+dulc.lm1.4 <- lm((totale_positivi) ~ I((terapia_intensiva)^2)*picco+I((terapia_intensiva))*picco, data = dulc)
+AIC <- rbind(extractAIC(dulc.lm1.1)[2],
+extractAIC(dulc.lm1.2)[2],
+extractAIC(dulc.lm1.3)[2],
+extractAIC(dulc.lm1.4)[2]
+)
+#BIC
+BIC <- rbind(extractAIC(dulc.lm1.1, k = log(n))[2], 
+             extractAIC(dulc.lm1.2, k = log(n))[2], 
+             extractAIC(dulc.lm1.3, k = log(n))[2],
+            extractAIC(dulc.lm1.4, k = log(n))[2]
+             )
+model <- c("dulc.lm1.1", "dulc.lm1.2", "dulc.lm1.3","dulc.lm1.4")
+xtable(cbind.data.frame(model,AIC,BIC))
+
+```
+
+```{r}
+plot( dulc[,2],dulc[,5])
+#curve(predict(dulc.lm, data.frame(ricoverati_con_sintomi=x,picco=x)) ,add=TRUE,col="red")
+lines(dulc[,2] , dulc.lm1.4$fitted.values, lty =1 , col = "red")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+dulc.lm2 <- lm(totale_positivi ~  nuovi_positivi+ variazione_totale_positivi, data = dulc)
+summary(dulc.lm2)
+vif(dulc.lm2)
+library(stargazer)
+stargazer((vif(dulc.lm2)), type = "latex", out = "vif2.tex")
+library(xtable)
+xtable(anova(dulc.lm2))
+anova(dulc.lm2)
+dulc.lm2 <- lm(totale_positivi ~  nuovi_positivi*picco, data = dulc)
+```
+
+
+```{r}
+plot(dulc[,7],dulc[,5])
+curve((as.numeric(dulc.lm2$coefficients[1])+as.numeric(dulc.lm2$coefficients[2])*x), from=0, to=15000, add=TRUE,col="red") 
+curve(as.numeric(dulc.lm2$coefficients[1])+as.numeric(dulc.lm2$coefficients[3]) + as.numeric(dulc.lm2$coefficients[5])*x+as.numeric(dulc.lm2$coefficients[2])*x, from=0, to=15000, add=TRUE,col="red") 
+curve((as.numeric(dulc.lm2$coefficients[1])+as.numeric(dulc.lm2$coefficients[4])+as.numeric(dulc.lm2$coefficients[6])*x+as.numeric(dulc.lm2$coefficients[2])*x), from=0, to=15000, add=TRUE,col="red") 
+#lines(dulc[,7] , dulc.lm2$fitted.values, lty =1 , col = "red")
+```
+
+```{r}
+dulc.lm2.1 <- lm(totale_positivi ~  nuovi_positivi, data = dulc)
+dulc.lm2.2 <- lm(totale_positivi ~  nuovi_positivi* picco, data = dulc)
+dulc.lm2.3 <- lm((totale_positivi) ~ I((nuovi_positivi)^2)+I((nuovi_positivi)), data = dulc)
+dulc.lm2.4 <- lm((totale_positivi) ~ I((nuovi_positivi)^2)*picco+I((nuovi_positivi))*picco, data = dulc)
+AIC <- rbind(extractAIC(dulc.lm2.1)[2],
+extractAIC(dulc.lm2.2)[2],
+extractAIC(dulc.lm2.3)[2],
+extractAIC(dulc.lm2.4)[2]
+)
+#BIC
+BIC <- rbind(extractAIC(dulc.lm2.1, k = log(n))[2], 
+             extractAIC(dulc.lm2.2, k = log(n))[2], 
+             extractAIC(dulc.lm2.3, k = log(n))[2],
+            extractAIC(dulc.lm2.4, k = log(n))[2]
+             )
+model <- c("dulc.lm2.1", "dulc.lm2.2", "dulc.lm2.3","dulc.lm2.4")
+xtable(cbind.data.frame(model,AIC,BIC))
+
+```
+
+```{r}
+dulc.lm3 <- lm(totale_positivi ~  dimessi_guariti+ deceduti, data = dulc)
+summary(dulc.lm3)
+vif(dulc.lm3)
+library(stargazer)
+stargazer((vif(dulc.lm3)), type = "latex", out = "vif2.tex")
+library(xtable)
+xtable(anova(dulc.lm3))
+anova(dulc.lm3)
+```
+
+```{r}
+dulc.lm3.1 <- lm(totale_positivi ~  dimessi_guariti, data = dulc)
+dulc.lm3.2 <- lm(totale_positivi ~  dimessi_guariti* picco, data = dulc)
+dulc.lm3.3 <- lm((totale_positivi) ~ I((dimessi_guariti)^2)+I((dimessi_guariti)), data = dulc)
+dulc.lm3.4 <- lm((totale_positivi) ~ I((dimessi_guariti)^2)*picco+I((dimessi_guariti))*picco, data = dulc)
+AIC <- rbind(extractAIC(dulc.lm3.1)[2],
+extractAIC(dulc.lm3.2)[2],
+extractAIC(dulc.lm3.3)[2],
+extractAIC(dulc.lm3.4)[2]
+)
+#BIC
+BIC <- rbind(extractAIC(dulc.lm3.1, k = log(n))[2], 
+             extractAIC(dulc.lm3.2, k = log(n))[2], 
+             extractAIC(dulc.lm3.3, k = log(n))[2],
+            extractAIC(dulc.lm3.4, k = log(n))[2]
+             )
+model <- c("dulc.lm3.1", "dulc.lm3.2", "dulc.lm3.3","dulc.lm3.4")
+xtable(cbind.data.frame(model,AIC,BIC))
+
+```
+
+
+```{r}
+plot((dulc[,8]),dulc[,5])
+#curve((as.numeric(dulc.lm3$coefficients[1])+as.numeric(dulc.lm3$coefficients[2])*(x)), from=2, to=3, add=TRUE,col="red") 
+#curve((10+20*log(x-11)), from=0, to=15, add=TRUE,col="red") 
+#curve(as.numeric(dulc.lm3$coefficients[1])+as.numeric(dulc.lm3$coefficients[3]) + as.numeric(dulc.lm3$coefficients[5])*x+as.numeric(dulc.lm3$coefficients[2])*x, from=0, to=15000, add=TRUE,col="red") 
+#curve((as.numeric(dulc.lm3$coefficients[1])+as.numeric(dulc.lm3$coefficients[4])+as.numeric(dulc.lm3$coefficients[6])*x+as.numeric(dulc.lm3$coefficients[2])*x), from=0, to=0.89, add=TRUE,col="red") 
+lines((dulc[,8]) , dulc.lm3.4$fitted.values, lty =1 , col = "red")
+```
+```{r}
+dulc.lm6 <- lm(totale_positivi ~  totale_casi+tamponi+casi_testati+giorno, data = dulc)
+summary(dulc.lm6)
+vif(dulc.lm6)
+library(stargazer)
+stargazer((vif(dulc.lm6)), type = "latex", out = "vif3.tex")
+library(xtable)
+xtable(anova(dulc.lm6))
+anova(dulc.lm6)
+
+```
+```{r}
+dulc.lm4.1 <- lm(totale_positivi ~  totale_casi, data = dulc)
+dulc.lm4.2 <- lm(totale_positivi ~  totale_casi* picco, data = dulc)
+dulc.lm4.3 <- lm((totale_positivi) ~ I((totale_casi)^2)+I((totale_casi)), data = dulc)
+dulc.lm4.4 <- lm((totale_positivi) ~ I((totale_casi)^2)*picco+I((totale_casi))*picco, data = dulc)
+AIC <- rbind(extractAIC(dulc.lm4.1)[2],
+extractAIC(dulc.lm4.2)[2],
+extractAIC(dulc.lm4.3)[2],
+extractAIC(dulc.lm4.4)[2]
+)
+#BIC
+BIC <- rbind(extractAIC(dulc.lm4.1, k = log(n))[2], 
+             extractAIC(dulc.lm4.2, k = log(n))[2], 
+             extractAIC(dulc.lm4.3, k = log(n))[2],
+            extractAIC(dulc.lm4.4, k = log(n))[2]
+             )
+model <- c("dulc.lm4.1", "dulc.lm4.2", "dulc.lm4.3","dulc.lm4.4")
+xtable(cbind.data.frame(model,AIC,BIC))
+
+```
+
+scelgo totale casi
+```{r}
+plot( dulc[,10],dulc[,5])
+lines(dulc[,10] , dulc.lm4$fitted.values, lty =1 , col = "red")
+```
+
+
+
+```{r}
+dulc.lm5 <- lm(totale_positivi ~ I((terapia_intensiva)^2)*picco+I((terapia_intensiva))*picco+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+I((nuovi_positivi)^2)*picco+I((nuovi_positivi))*picco, data = dulc)
+summary(dulc.lm5)
+plot(dulc.lm5)
+log(vif(dulc.lm5))
+```
+
+
+```{r}
+plot( dulc[,13],dulc[,5])
+lines(dulc[,13] , dulc.lm5$fitted.values, lty =1 , col = "red")
+```
+
+
+```{r}
+(anova(dulc.lm5))
+AIC <- rbind(extractAIC(dulc.lm5)[2]
+)
+#BIC
+BIC <- rbind(extractAIC(dulc.lm5, k = log(n))[2]
+             )
+model <- c("dulc.lm5")
+cbind.data.frame(model,AIC,BIC)
+plot(dulc.lm5,col=as.factor(dulc[,15]))
+```
+
+```{r}
+dulc.lm7 <- glm(totale_positivi ~ I((terapia_intensiva)^2)*picco+I((terapia_intensiva))*picco+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+I((nuovi_positivi)^2)*picco+I((nuovi_positivi))*picco, data =dulc[1:(length(dataupdatedLombardia[,1])-15),],family=poisson(link=log))
+summary(dulc.lm7)
+plot(dulc.lm7,col=as.factor(dulc[,15]))
+```
+
+
+
+```{r}
+dulc.lm8 <- glm(totale_positivi ~ I((terapia_intensiva)^2)*picco+I((terapia_intensiva))*picco+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+I((nuovi_positivi)^2)*picco+I((nuovi_positivi))*picco, data = dulc, family=Gamma(link=log))
+summary(dulc.lm8)
+for (i in 1:4){
+      file_name = paste("residual", i, ".png", sep="")
+  png(file=file_name,
+width=6, height=4, units="in", res=300)
+plot(dulc.lm8,which=i,col=as.factor(dulc[,15]))
+dev.off()
+}
+```
+```{r}
+dulc.lm7 <- glm((totale_positivi) ~ log(terapia_intensiva)+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+nuovi_positivi*colore, data =dulc[1:(length(dataupdatedLombardia[,1])-15),],family=poisson(link=log))
+summary(dulc.lm7)
+plot(dulc.lm7,col=as.factor(dulc[,15]))
+
+```
+
+
+
+```{r}
+library(lasso2)
+dulc.lm8 <- l1ce(totale_positivi ~ log(isolamento_domiciliare)+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+terapia_intensiva* picco, data = dulc)
+summary(dulc.lm8)$coefficients
+plot(dulc.lm8$fitted,dulc.lm8$residuals,col=as.factor(dulc[,15]))
+library("car")
+qqPlot(dulc.lm8$residuals,lwd=1)
+```
+
+```{r}
+plot( dulc[,13],dulc[,5])
+lines(dulc[,13] , dulc.lm8$fitted.values, lty =1 , col = "red")
+```
+```{r}
+library(mgcv)
+dulc.lm9 <- gam(exp(totale_positivi) ~ s(log(isolamento_domiciliare))+s(poly(totale_casi, degree = 2, raw = TRUE)*picco)+s(poly(dimessi_guariti, degree = 2, raw = TRUE)*picco)+ s(terapia_intensiva* picco), data = dulc, family=quasipoisson(link=log))
+summary(dulc.lm7)
+plot(dulc.lm9,col=as.factor(dulc[,15]))
+```
+
+```{r}
+plot( dulc[,13],dulc[,5])
+lines(dulc[,13] , dulc.lm9$fitted.values, lty =1 , col = "red")
+```
+
+
+```{r}
+coverage_log <- exp(predict(dulc.lm7, interval ="confidence"))
+exp(predict(dulc.lm7, interval ="confidence"))[1:14,]
+```
+
+
+```{r}
+library(randomForest)
+dulcrf<-subset(dulc, select = -c(variazione_totale_positivi) )
+dulc.lm10 <- randomForest(totale_positivi ~ ., data=dulcrf[1:(length(dataupdatedLombardia[,1])-15),], importance=TRUE) 
+print(dulc.lm10)
+importance(dulc.lm10)
+random_forest<-predict(dulc.lm10, dulcrf[,])
+
+random_forest
+```
+```{r}
+
+is.dom.gam<-randomForest(nuovi_positivi ~ ., data=dulcrf[1:(length(dataupdatedLombardia[,1])-15),], importance=TRUE)
+
+
+
+tot.cas.gam<-randomForest(totale_casi ~ ., data=dulcrf[1:(length(dataupdatedLombardia[,1])-15),], importance=TRUE)
+
+dim.guar.gam<-randomForest(dimessi_guariti ~ ., data=dulcrf[1:(length(dataupdatedLombardia[,1])-15),], importance=TRUE)
+
+
+ter.int.gam<-randomForest(terapia_intensiva ~ ., data=dulcrf[1:(length(dataupdatedLombardia[,1])-15),], importance=TRUE)
+
+
+```
+
+
+
+```{R}
+dulc.lm8 <- glm(totale_positivi ~ I((terapia_intensiva)^2)*picco+I((terapia_intensiva))*picco+I(totale_casi^2)*picco+I(totale_casi)*picco+I(dimessi_guariti^2)*picco+I(dimessi_guariti)*picco+I((nuovi_positivi)^2)*picco+I((nuovi_positivi))*picco, data = dulc[1:(length(dataupdatedLombardia[,1])-15),], family=Gamma(link=log))
+predictions<-predict.glm(dulc.lm8, data.frame(terapia_intensiva=predict(ter.int.gam, dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),]),dimessi_guariti=predict(dim.guar.gam, dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),]),totale_casi=predict(tot.cas.gam, dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),]),nuovi_positivi=predict(is.dom.gam,dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),]), picco=dulc[100:115,15] ))
+dimessi_guariti=predict(dim.guar.gam, dulc)
+dimessi_guariti
+predictions1<-predict.glm(dulc.lm8, data.frame(terapia_intensiva=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),2],dimessi_guariti=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),8],totale_casi=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),10],nuovi_positivi=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),7],picco=dulc[115:130,15]), interval="confidence", level=.95)                        
+predictions1=exp(predictions1)
+
+predictions1 <- data.frame(totale_positivi = as.numeric((predictions1)), days=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),13])
+predictions=exp(predictions)
+predictions <- data.frame(totale_positivi = as.numeric((predictions)), days=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),13])
+predictions
+#random_forest <- data.frame(totale_positivi = as.numeric((random_forest[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1])])), days=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),13]) 
+#dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),5]
+  png(file="predictions1.png",width=6, height=4, units="in", res=300)
+plot( exp(predictions[1:16,2]),exp(predictions[1:16,1]), col="red",
+ylim=c(40000,65000))
+points( exp(dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),13]), exp(dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),5]), col="black",lwd = 1)
+points(exp( predictions1[1:16,2]),exp(predictions1[1:16,1]), col="blue")
+points( exp(random_forest[1:16,2]),exp(random_forest[1:16,1]), col="green")
+dev.off()
+data = data.frame(days=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),13], totale_positivi=dulc[(length(dataupdatedLombardia[,1])-15):length(dataupdatedLombardia[,1]),5])
+
+```
+
+
+
+1 - 6 novembre bianca
+6 - 29 novembre rossa 
+29 - 13 dicembre arancione
+24 a 27 dicembre rossa 
+28-29-30 dicembre arancione
+31 - 3 gennaio rossa
+4 gennaio arancione
+5-6 gennaio rossa
+7-8 gennaio gialla
+9-15 gennaio arancione
+16-23 gennaio rossa
+24-1 febbraio arancione
+1-ora gialla
+
+
+
+
+By building your model, evaluate the inclusion of some covariates and their effect on the response variable. Some possible covariates could regard: the regional colors (yellow, orange, red), the partial lockdown regime, some region-specific laws and rules, etc.
+
+Check the model fit by using the proper tools, such as residuals plots.
+
+Provide 10-15 days-forward predictions and check their accuracy.
+
+Compare alternative models in terms of predictive information criteria and comment.
+
+

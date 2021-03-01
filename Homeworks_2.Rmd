@@ -1,0 +1,622 @@
+---
+title: "Homework2"
+output: html_document
+fontsize: 10pt
+subtitle: "Statistical Methods for Data Science"
+author: "Ilaria Vascotto, Ilaria Rochelli, Marco Sciorilli, Giovanni Pinna"
+---
+# Lecture
+
+## Exercise 1
+
+<!-- Request: Refer to the theoretical lecture about bootstrap and compute the bootstrap-based confidence interval for the score dataset using the studentized method. -->
+
+<!-- First we write a function which computes the eigenratio and we compute it on the score dataset -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- setwd("C:/Users/ilari/Desktop/DSSC/Statistical Methods for Data Science/Assignement 2")                                                                                                                                                                                                                                                                      -->
+<!-- score <- read.table("student_score.txt", header=TRUE, sep=" ") -->
+
+<!-- #we write a function which computes the eigenratio -->
+<!-- eigenratio_fun <- function(data){ -->
+<!--   eigenvalue <- eigen(cor(data))$values -->
+<!--   eigenratio = max(eigenvalue) / sum(eigenvalue) -->
+<!--   return(eigenratio) -->
+<!-- } -->
+
+<!-- #we compute the observed eigenratio statistic for the score dataset -->
+<!-- eigenratio_obs <- eigenratio_fun(score) -->
+
+<!-- ``` -->
+
+<!-- Then with a for loop we compute the eigenratio for 10^4 bootstrap simulated sample and inside this we insert another for loop which computes the SE of every simulated sample with the jacknife method -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- n <- nrow(score) -->
+<!-- #B is then number of bootsrap sample we will simulate -->
+<!-- B <- 10^4 -->
+<!-- #in sim_eigenratio we will put all the value of eigenratio_fun obtained from each of the B bootstrap sample -->
+<!-- #(infact sim_eigenratio has B values) -->
+<!-- sim_eigenratio <- rep(0, B) -->
+<!-- z_star <- rep(0, B) -->
+<!-- for(i in 1:B){ -->
+<!--   #we create a new sample of index and store it in the vector index -->
+<!--   index <- sample(1:n, n, replace=TRUE) -->
+<!--   #we put the eigenratio for this simulation in sim_eigenratio[i] -->
+<!--   sim_eigenratio[i] <- eigenratio_fun(score[index,]) -->
+<!--   #in sim_eigenratio_jack we will put all the jacknife eigenratio of the sample index[i] without the j-th observation -->
+<!--   sim_eigenratio_jack <- rep(0, n) -->
+<!--   for (j in 1:n){ -->
+<!--     #we delete the j-th line -->
+<!--     index_j <- index[-j] -->
+<!--     #and store the eigenratio without the j-th line -->
+<!--     sim_eigenratio_jack[j] <- eigenratio_fun(score[index_j,]) -->
+<!--   } -->
+<!--   #we compute the jacknife SE for this sample -->
+<!--   SE_jack <- sqrt(((n-1)/n)*(sum((sim_eigenratio_jack - mean(sim_eigenratio_jack))^2))) -->
+<!--   #and compute the z_star_i -->
+<!--   z_star[i] <- (sim_eigenratio[i] - eigenratio_obs) / SE_jack -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- In the end we compute the bootstrap SE from all the eigenratio obtained via simulation and using the SE of each sample obtained with the jacknife method we compute the studentized bootstrap confidence interval -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE, names=FALSE} -->
+<!-- SE_boot <- sd(sim_eigenratio) -->
+
+<!-- std_boot_conf_int <- eigenratio_obs - SE_boot*quantile(z_star , prob=c(0.975, 0.025)) -->
+<!-- std_boot_conf_int -->
+<!-- ``` -->
+
+
+<!-- ## Exercise 2 -->
+
+<!-- Request: refer to the theoretical lecture about bootstrap and compute bootstrap-based confidence intervals for the score dataset using the boot package. -->
+
+<!-- To compute the bootstrap-based confidence intervals we first need to define a function which can be passed as input to the *boot* function of the boot package. -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- library(boot) -->
+
+<!-- #we write a function which returns the eigenvalues, needed for the external bootstrap -->
+<!-- eigenratio_boot_fun <- function(data, indexes){ -->
+<!--   data1 = data[indexes,] -->
+<!--   eigenvalue <- eigen(cor(data1))$values -->
+<!--   eigenratio = max(eigenvalue) / sum(eigenvalue) -->
+<!--   return(eigenratio) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- Then, in order to compute also the studentized confidence interval we need to define another function to compute also all the SE relative to every sample (the correspondent inner for-loop of the previous exercise) -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- #we write a second function which return the eigenratio and the relative SE, needed for the internal bootstrap -->
+<!-- internal_boot_fun <- function(data, indexes, iter){ -->
+<!--   data2 = data[indexes,] -->
+<!--   eigenvalue <- eigen(cor(data2))$values -->
+<!--   eigenratio = max(eigenvalue) / sum(eigenvalue) -->
+<!--   var_eigenvalue <- var(boot(data2, eigenratio_boot_fun, R=iter)$t) -->
+<!--   return(c(eigenratio, var_eigenvalue)) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- At the end we can use the function boot (we put only 100 iteration in the inner loop due to the long execution time requested) and pass its output to the function *boot.ci* which computes 5 type of equi-tailed two-sided non parametric confidence intervals. They respectively are: -->
+
+<!-- * 1. First order normal approximation -->
+
+<!-- * 2. Basic bootstrap interval -->
+
+<!-- * 3. Studentize bootstrap interval -->
+
+<!-- * 4. Bootstrap percentile interval -->
+
+<!-- * 5. Adjusted bootstrap percentile -->
+
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- boot1 <- boot(score, internal_boot_fun, iter=100, R=10^4) -->
+<!-- boot.ci(boot1,conf.level=0.95, type="all") -->
+<!-- ``` -->
+
+
+
+# Lab
+
+## Exercise 1
+
+Request: Compute the MLE and the observed information matrix for a gamma model with parameters shape α and scale β.
+
+Let $y=(y_{1},\ldots, y_{n})$ be a sample of i.i.d. values from a Gamma distribution, $Y \sim \mbox{Gamma}(\alpha, \beta)$, with parameter $\theta=(\alpha, \beta)$ and density function: 
+
+
+$$ f (y; \alpha, \beta)= \frac{\beta^{\alpha}\ y^{\alpha-1} \ e^{-\beta\ y}}{\Gamma(\alpha)}, \ \ \alpha, \beta >0$$
+
+where $\alpha$ is the shape parameter and $\beta$ is the scale parameter.
+
+In order to compute the MLE for $\alpha$ and $\beta$ we need to find the log likelihood function:
+
+\begin{align*}
+l(\alpha, \beta; y)= & \sum_{i=1}^{n} \log f(y_i;\alpha, \beta) \\ 
+ = & \sum_{i=1}^{n} \log(\frac{\beta^{\alpha}}{\Gamma(\alpha)} \ y_i^{\alpha -1} \ e^{-\beta \ y}) \\
+ = & \sum_{i=1}^n \log( \frac{\beta^{\alpha}}{\Gamma(\alpha)}) + \sum_{i=1}^n \log(y_i)^{\alpha -1} + \sum_{i=1}^n \log (e)^{-\beta \ y} \\
+ = & n \alpha \log(\beta) - n \log(\Gamma(\alpha)) + (\alpha -1) \sum_{i=1}^n \log(y_i) - \beta \sum_{i=1}^n \ y_i \\
+ \end{align*} 
+
+and than we have to equate at zero the log likelihood derivative
+
+\begin{align*}
+\frac{\partial l(\alpha, \beta;y)}{\partial \alpha} =  & n \log(\beta) + \sum_{i=1}^n \log(y_i) -n \frac{d \log(\Gamma (\alpha))}{d  \alpha}= 0\\
+\frac{\partial l(\alpha, \beta;y)}{\partial \beta} = & \frac{n \alpha}{\beta} - \sum_{i=1}^n \ y_i= 0
+\end{align*}
+
+From the second equation we obtain that the MLE for $\beta$ is $\hat{\beta} = \frac{\alpha}{\overline{y}}$ 
+
+Instead we can notice that the first equation need to be solved with a numerical approximation, in which we need to use the function *digamma* to compute $\frac{d \log(\Gamma (\alpha))}{d  \alpha}$
+
+Let's understand how it works by making an example: suppose to observe $y_1, ..., y_n \sim \mbox{Gamma}(\alpha, \beta)$ with $\alpha$ and $\beta$ unknown. If we want to find the MLE we need to do on R what explained since now:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#write the log likelihood of a gamma distribution
+log_lik_gamma <- function(data, param){
+  sum(dgamma(data, shape = param[1], scale = param[2], log = TRUE))
+}
+
+#the sample size is n=15
+n <- 15
+
+#simulate n values from a gamma with known parameters
+y <- rgamma(n, shape = 4, scale = 10)
+
+#and we find and print the value of the MLE for alpha and beta
+alpha_hat <- uniroot(function(x) n*log(x/mean(y))+sum(log(y))-(n)**digamma(x), c(2,10))$root
+beta_hat <- mean(y)/alpha_hat
+print(c(alpha_hat, beta_hat))
+```
+
+Now let's compute the observed information matrix, which is defined as: $$J(\theta; y)=- \frac{\partial^{2} l( \theta;y)}{ \partial \theta \partial \theta^{T}}=\left(\begin{array}{cc}
+-\frac{\partial^{2} l( \alpha,\beta;y)}{ \partial^2 \alpha} & -\frac{\partial^{2} l( \alpha,\beta;y)}{ \partial \alpha \partial \beta}\\
+-\frac{\partial^{2} l( \alpha,\beta;y)}{ \partial \beta \partial \alpha} & -\frac{\partial^{2} l( \alpha,\beta;y)}{ \partial^2 \beta}
+\end{array}\right)$$ where $\theta$ is the bi-dimensional parameter vector $\theta = (\alpha, \beta)$
+
+```{r, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+j_hat <- matrix(NA, nrow=2, ncol=2)
+j_hat[1,1] <- n*trigamma(alpha_hat)
+j_hat[1,2] <- j_hat[2,1] <- -n/beta_hat
+j_hat[2,2]<- (n*alpha_hat)/((beta_hat)^2)
+ 
+solve(j_hat)
+ #se of the mle
+ mle.se <- sqrt(diag(solve(j_hat,tol = 1e-20)))
+ mle.se
+```
+
+## Exercise 2 
+The **Wald confidence interval**  with level $1-\alpha$ is defined as:
+
+$$ \hat{\gamma} \pm z_{1-\alpha/2}j_{P}(\hat{\gamma})^{-1/2}. $$ Compute the Wald confidence interval of level 0.95, plot the results, and evaluate via simulation the empirical coverage of the confidence interval. 
+
+### Weibull model
+
+
+Let $y=(y_{1},\ldots, y_{n})$ a sample of iid values from a Weibull distribution, $Y \sim \mbox{We}(\gamma, \beta)$, with parameter $\theta=(\gamma, \beta)$ and density function:
+
+$$ f (y; \gamma, \beta)= \frac{\gamma}{\beta}\left(\frac{y}{\beta}\right)^{\gamma-1}e^{-(y/\beta)^{\gamma}}, \ \ \ y, \gamma, \beta >0,$$
+where $\gamma$ is the *shape* parameter and $\beta$ is the *scale* parameter.
+
+```{r weibull_log, echo=TRUE}
+
+log_lik_weibull <- function( data, param){   #define the log likelihood of a weibull distribution
+  -sum(dweibull(data, shape = param[1], scale = param[2], log = TRUE))
+}
+
+```
+
+```{r weibull_simulation, echo=TRUE}
+n <- 15
+y <- rweibull(n, shape = 7, scale = 155) #simulate a weibull distribution
+```
+
+```{r weibull_interval, echo=TRUE,, warning=FALSE, message=FALSE}
+log_lik_weibull_profile  <- function(data, gamma){
+  beta.gamma <- mean(data^gamma)^(1/gamma)
+ log_lik_weibull( data, c(gamma, beta.gamma) )
+}
+weib.y.mle <- optim(c(1,1), fn=log_lik_weibull, hessian=T, method='L-BFGS-B', #find the expected value for gamma
+                     lower=rep(1e-7,2), upper=rep(Inf,2), data=y)
+log_lik_weibull_profile_v <- Vectorize(log_lik_weibull_profile, 'gamma')
+
+
+
+weib.y.mle.profile <- optim(c(1,1), fn=log_lik_weibull_profile, hessian=T, method='L-BFGS-B', #find the observed information matrix derived by using the profile likelihood for gamma
+                    lower=rep(1e-7,2), upper=rep(Inf,2), data=y)
+plot(function(x) -log_lik_weibull_profile_v(data=y, x)+weib.y.mle$value, #plot the profile relative log likelihood
+     from=0.1,to=15,xlab=expression(gamma),
+     ylab='profile relative log likelihood', ylim=c(-4,0))
+ 
+
+quantile.level <-1-0.05/2 #define quantile
+mle.profile.se <- sqrt(diag(solve(weib.y.mle.profile$hessian,tol = 1e-20))) #find the SE of gamma and beta from the profile 
+lrt.ci1 <- weib.y.mle.profile$par[1]- qnorm(quantile.level,mean=0,sd=1)*(mle.profile.se[1]) #find the lower bound of the Wald interval from the observed information matrix derived by using the profile likelihood for gamma
+lrt.ci1 <- c(lrt.ci1, weib.y.mle.profile$par[1]+ qnorm(quantile.level,mean=0,sd=1)*(mle.profile.se[1]))#find the upper bound of the Wald interval from the observed information matrix derived by using the profile likelihood for gamma
+segments( lrt.ci1[1],-log_lik_weibull_profile_v(y, lrt.ci1[1])+weib.y.mle$value, lrt.ci1[1], #plot the interval 
+          -log_lik_weibull_profile_v(y, lrt.ci1[1]), col="red", lty=2)
+segments( lrt.ci1[2],-log_lik_weibull_profile_v(y, lrt.ci1[2])+weib.y.mle$value, lrt.ci1[2],
+          -log_lik_weibull_profile_v(y, lrt.ci1[2]), col="red", lty=2)
+
+points(lrt.ci1[1], -log_lik_weibull_profile_v(y, lrt.ci1[1])+weib.y.mle$value, pch=16, col=2, cex=1.5)
+points(lrt.ci1[2], -log_lik_weibull_profile_v(y, lrt.ci1[2])+weib.y.mle$value, pch=16, col=2, cex=1.5)
+
+segments( lrt.ci1[1], -20, lrt.ci1[2], -20, col="red", lty =1, lwd=2  )
+text(8,-18,"95% Wald CI",col=2)
+ 
+
+
+
+```
+
+```{r weibull_empirical_test, echo=TRUE, warning=FALSE, message=FALSE}
+
+log_lik_weibull <- function( data, param){   #define the log likelihood of a weibull distribution
+  -sum(dweibull(data, shape = param[1], scale = param[2], log = TRUE))
+}
+log_lik_weibull_profile  <- function(data, gamma){#define the profile log likelihood of a weibull distribution with beta as a nuisance parameter
+  beta.gamma <- mean(data^gamma)^(1/gamma)
+  log_lik_weibull( data, c(gamma, beta.gamma) )
+}
+
+
+numSamples <- 10000 #number of samples to be drawn from population
+isCovered <- numeric()
+numEvents<-20 #this is the sample size (size of each sample)
+ for (j in 1:numSamples) { #iterate the process over numSamples samples
+  y <- rweibull(numEvents, shape = 7, scale = 155) #simulate a weibull distribution of size numEvents
+  
+  weib.y.mle <- optim(c(6,150), fn=log_lik_weibull, hessian=T, method='L-BFGS-B', #find the expected value for gamma
+                     lower=rep(1e-7,2), upper=rep(Inf,2), data=y)
+  
+  weib.y.mle.profile <- optim(c(6,150), fn=log_lik_weibull_profile, hessian=T, method='L-BFGS-B', #find the observed information matrix derived by using the profile likelihood for gamma
+                    lower=rep(1e-7,2), upper=rep(Inf,2), data=y)
+
+  quantile.level <-1-0.05/2 #define quantile
+
+  mle.profile.se <- sqrt(diag(solve(weib.y.mle.profile$hessian,tol = 1e-20))) #find the SE of gamma and beta from the profile 
+
+  lrt.ci1 <- weib.y.mle.profile$par[1]- qnorm(quantile.level,mean=0,sd=1)*(mle.profile.se[1]) #find the lower bound of the Wald interval from the observed information matrix derived by using the      profile likelihood for gamma
+  lrt.ci1 <- c(lrt.ci1, weib.y.mle.profile$par[1]+ qnorm(quantile.level,mean=0,sd=1)*(mle.profile.se[1]))#find the upper bound of the Wald interval from the observed information matrix derived by     using the profile likelihood for gamma
+  isCovered[j] <- (lrt.ci1[1] < 7) & (7 < lrt.ci1[2]) #a boolean vector to denote if the true value of the parameter is within the constructed ci
+ }
+coverage <- mean(isCovered)*100 #captures the coverage for the parameter alpha. Ideally, for a 95% ci, this should be more #or else 95%
+coverage
+
+
+
+
+```
+## Exercise 3
+**Exercise 3** Repeat the steps above ---write the profile log-likelihood, plot it and find the deviance confidence intervals--- considering this time $\gamma$ as a nuisance parameter and $\beta$ as the parameter of interest.  
+
+
+
+
+```{r weibull_interval_beta, echo=TRUE}
+n <- 150
+y <- rweibull(n, shape = 7, scale = 155) #simulate a weibull distribution
+
+log_lik_weibull <- function( data, param){   #define the log likelihood of a weibull distribution
+  -sum(dweibull(data, shape = param[1], scale = param[2], log = TRUE))
+}
+weib.y.mle <- optim(c(1,1), fn=log_lik_weibull, hessian=T, method='L-BFGS-B', #find the expected value for gamma
+                     lower=rep(1e-7,2), upper=rep(Inf,2), data=y)
+
+log_lik_weibull_profile  <- function(data, beta){
+  gamma.beta<-sapply(beta, function(beta) uniroot(function(x) n/x-n*log(beta)+sum(log(y))-sum((y/beta)^x*log(y/beta)),c(1e-5,15))$root)
+ log_lik_weibull( data, c(gamma.beta,beta) )
+}
+
+
+
+log_lik_weibull_profile_v <- Vectorize(log_lik_weibull_profile, 'beta')
+plot(function(x) -log_lik_weibull_profile_v(data=y, x)+weib.y.mle$value,
+     from=130,to=165,xlab=expression(beta),
+     ylab='profile relative log likelihood', ylim=c(-8,0))
+ 
+conf.level <- 0.95
+abline(h=-qchisq(conf.level,1)/2,lty='dashed',col=2)
+
+lrt.ci1 <- uniroot(function(x) -log_lik_weibull_profile_v(y, x)+ #find the lower bound of the deviance interval
+                     weib.y.mle$value+
+                     qchisq(conf.level,1)/2, 
+                   c(1e-7,weib.y.mle$par[2]))$root
+
+lrt.ci1 <- c(lrt.ci1, uniroot(function(x) -log_lik_weibull_profile_v(y,x) + #find the upper bound of the deviance interval
+                                weib.y.mle$value + qchisq(conf.level,1)/2,
+                              c(weib.y.mle$par[2],200))$root)
+segments( lrt.ci1[1],-qchisq(conf.level,1)/2, lrt.ci1[1],
+          -log_lik_weibull_profile_v(y, lrt.ci1[1]), col="red", lty=2)#plot the interval 
+segments( lrt.ci1[2],-qchisq(conf.level,1)/2, lrt.ci1[2],
+          -log_lik_weibull_profile_v(y, lrt.ci1[2]), col="red", lty=2)
+
+points(lrt.ci1[1], -qchisq(0.95,1)/2, pch=16, col=2, cex=1.5)
+points(lrt.ci1[2], -qchisq(0.95,1)/2, pch=16, col=2, cex=1.5)
+
+segments( lrt.ci1[1], -8.1, lrt.ci1[2], -8.1, col="red", lty =1, lwd=2  )
+text(150,-7.5,"95% Wald CI",col=2)
+ 
+
+
+
+```
+
+
+
+
+## Exercise 4
+
+Request: In sim in the code above, you find the MCMC output which allows to approximate the posterior distribution of our parameter of interest with S draws of θ. Plot the empirical cumulative distribution function and compare it with the theoretical cumulative distribution function of the posterior distribution.
+
+In order to plot the two cumulative distribution functions we need to find the empirical posterior distribution using stan and the theoretical posterior distribution.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#input values
+#true mean
+theta_sample <- 2
+#likelihood variance
+sigma2 <- 2
+#sample size
+n <- 10
+#prior mean
+mu <- 7
+#prior variance
+tau2 <- 2
+#generate some data
+set.seed(123)
+y <- rnorm(n,theta_sample, sqrt(sigma2))
+#posterior mean
+mu_star <- ((1/tau2)*mu+(n/sigma2)*mean(y))/( (1/tau2)+(n/sigma2))
+#posterior standard deviation
+sd_star <- sqrt(1/( (1/tau2)+(n/sigma2)))
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
+library(rstan)
+#launch Stan model
+data<- list(N=n, y=y, sigma =sqrt(sigma2), mu = mu, tau = sqrt(tau2))
+fit <- stan(file="normal.stan", data = data, chains = 4, iter=2000)
+#extract Stan output
+sim <- extract(fit)
+```
+
+Now we have all the data to plot both the cumulative distribution function. Remember that the theoretical distribution function is a normal distribution with mean $\mu = 2.55 ...$ and standard deviation $\sigma = 0.4264 ...$
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#let's first plot the empirical cumulative distribution function
+t=sim$theta
+plot(ecdf(t), lwd=2, col=4, xlim=c(0.8, 4.4), xlab="x", ylab="P(X<=x)", main="Empirical and theoretical c.d.f.")
+#now let's plot the theoretical cumulative distribution function
+curve(pnorm(x, mean=mu_star, sd=sd_star), lwd=2, col=2, add=TRUE, main="Empirical and theoretical c.d.f.")
+#we add a legend to make the plot easily understandable
+legend("bottomright", c("Theoretical c.d.f.", "empirical c.d.f."), col=c(2,4), cex=0.8, inset=0.05, lty=1)
+```
+From the plot we can notice that the two c.d.f. are quite similar
+  
+## Exercise 5
+
+Request: Launch the following line of R code:
+posterior <- as.array(fit)
+Use now the bayesplot package. Read the help and produce for this example, using the object posterior, the following plots: posterior intervals, posterior areas, marginal posterior distributions for the parameters.
+Quickly comment.
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library("bayesplot")
+posterior <- as.array(fit)
+```
+
+To plot the posterior interval we will use the command *mcmc_intervals*.
+
+```{r, warning=FALSE, message=FALSE}
+library("bayesplot")
+posterior <- as.array(fit)
+#posterior intervals
+color_scheme_set("blue")
+mcmc_intervals(posterior, pars = c("theta"), prob = 0.8, prob_outer=0.8)
+```
+
+In the plot the there is a tick segment which represent the posterior interval for $\theta$ with 80% of probability to contain the true value of the parameter, while the point represent the posterior mean. In our case we know the true value of the parameter and so we know that it is included in this interval and that the posterior mean is really close to the true value.
+
+To plot the posterior area and the marginal posterior distribution we use respectively the functions *mcmc_areas* and *mcmc_hist*
+
+```{r, warning=FALSE, message=FALSE}
+
+#posterior areas
+mcmc_areas(
+  posterior, 
+  pars = c("theta"),
+  prob = 0.9, # 80% intervals
+  prob_outer = 0.99, # 99%
+  point_est = "mean"
+)
+
+#marginal posterior distributions
+color_scheme_set("blue")
+mcmc_hist(posterior, pars = c("theta"))
+```
+
+In our case we are evaluating only one parameter so the posterior marginal distributions is just the histogram version of the curve of the posterior areas. As expected the extremes of the posterior intervals coincide with the extreme of the posterior area.
+
+## Exercise 6
+<!-- the prior is -->
+<!-- $$\\ \pi(\lambda) = Gamma(4,2)$$ -->
+<!-- we can compute it analitically: -->
+
+<!-- $$\pi(\lambda\mid y)\propto L(\lambda; y)\pi(\lambda) \\$$ -->
+<!-- where $$L(\lambda; y) = \lambda e^{-\lambda y}$$ and $$\pi(\lambda) = \frac{\beta^\alpha}{\Gamma(\alpha)} x^{\alpha - 1} e^{-\beta x} \\$$ -->
+<!-- thus -->
+<!-- $$\\ \pi(\lambda \mid y) = \lambda e^{-\lambda y}\frac{\beta^\alpha}{\Gamma(\alpha)} y^{\alpha - 1} e^{-\beta y} = \lambda\frac{\beta^\alpha}{\Gamma(\alpha)} y^{\alpha - 1} e^{-(\beta+\lambda) y} = \lambda\frac{16}{3!} y^{4 - 1} e^{-(2+\lambda) y} = \lambda\frac{8}{3} y^{3} e^{-(2+\lambda) y} \\$$ -->
+
+Given that the likelihood we are provided with is an exponential one and it involves the parameter $\lambda$ that is greater or equal to zero, it seems appropriate at first glance to use a prior distribution with support the real positive line.   
+If we were to take into account a prior distribution such as the normal one we would implicitly accept a $\lambda$ that could assume negative values. This is of course illogical given the nature and the interpretation of this parameter in the exponential distribution.
+If the prior distribution was a beta, the support would be limited to the range [0,1]. It would seem unreasonable to limit ourselves to such a short interval given that the gamma distribution is also a possibility, extending to the whole positive real line, and it might fit better our example. 
+
+In the following, the posterior distribution will be computed analytically considering as prior $\pi(\lambda)=\mathsf{Gamma}(4,2)$.
+
+For a given gamma distribution $X\sim Gamma(\alpha,\beta)$ the probability density function is: $f(x)=\frac {\lambda^\alpha x^{\alpha-1} e^{-\lambda x}}{\Gamma(\alpha)}$.  
+We know that the likelihood is that of an exponential distribution $y\sim exp(\lambda)$ hence $L(\lambda, y)=\prod\limits_{i=1}^{n} \lambda e^{-\lambda y}=\lambda^n e^{-\lambda \sum{y_i}}=\lambda^n e^{-\lambda n \bar y }$.  
+  
+To avoid confusion, let's denote by $\theta$ the parameter of interest, as $\lambda$ denotes both the scale parameter of the Gamma distribution and the parameter of interest. Therefore the previous relationships are:  
+$\pi(\theta)=\frac {\lambda^\alpha \theta^{\alpha-1} e^{-\lambda \theta}}{\Gamma(\alpha)}$  
+$L(\theta, y)=\prod\limits_{i=1}^{n} \theta e^{-\theta y_i}=\theta^n e^{-\theta n \bar y }$  
+
+Then, knowing that $\pi(\theta|y) \propto \pi(\theta)\times L(\theta, y)$ we can easily compute:  
+$\pi(\theta|y)=\theta^{\alpha-1}e^{-\lambda \theta}\theta^n e^{-\theta n \bar y}= \theta^{n+\alpha-1}e^{-\theta(\lambda+n \bar y)}$  
+  
+This reflects the probability density function of a Gamma distribution with updated parameters $\pi(\theta|y) \sim Gamma(\alpha+n,\lambda +n \bar y)$
+
+Now a final graph will present the distributions of the prior, likelihood and posterior. 
+
+```{r, warning=FALSE, message=FALSE}
+n=15
+a=4
+l=2
+
+y=rexp(n,2)
+y
+a_new=a+n
+l_new=l+n*mean(y)
+
+
+lkl=function(x,y){
+  n=length(y)
+  x^n*exp(-x*n*mean(y))
+}
+
+x=seq(0,6,0.01)
+curve(lkl(x,y)/max(lkl(x,y)), lwd=2, lty=2,xlim=c(0,6), main="Distribution of prior, posterior and likelihood", ylab="density")
+#the likelihood was presented dived by its maximum value to allow comparison with the other curves. 
+curve(dgamma(x,a,l), col="blue", lwd=2,add=T)
+curve(dgamma(x,a_new,l_new), add=T, col="red", lwd=2)
+legend("topright", c("prior", "likelihood","posterior"), col=c("blue","black","red"), lty=c(1,2,1), lwd=2, cex=.8)
+
+```
+
+## Exercise 7
+
+We are now assuming a uniform distribution for the parameter sigma, namely $\sigma \sim U(a=0.1, b=10)$ and we are calling, via $\mathsf{stan}$, its logaritmic probabily density function. 
+
+
+```{r, warning=FALSE, message=FALSE}
+library("rstan")
+library("bayesplot")
+library("rstanarm")
+library("ggplot2")
+
+n=10
+theta_sample=2
+sigma2=2
+y=rnorm(n,theta_sample, sqrt(sigma2))
+
+datas=list(N=n, y=y, a=-10, b=10)
+fit=stan(file="biparametric_new.stan", data = datas, chains = 4, iter=2000,
+  refresh=-1)
+
+sim=extract(fit)
+posterior_biv=as.matrix(fit)
+
+theta_est=mean(sim$theta)
+sigma_est=mean(sim$sigma)
+c(theta_est, sigma_est)
+traceplot(fit, pars=c("theta", "sigma")) 
+
+plot_title = ggtitle("Posterior distributions",
+                      "with medians and 80% intervals")
+plot_title1 = ggtitle("Posterior distributions",
+                      "with medians and 90% intervals")
+#posterior densities
+
+mcmc_areas(posterior_biv, 
+           pars = c("theta","sigma"), 
+           prob = 0.8) + plot_title
+
+mcmc_areas(posterior_biv, 
+           pars = c("theta","sigma"), 
+           prob = 0.9) + plot_title1
+```
+The estimates for theta and sigma are presented in the output of the R chunk. 
+From the traceplots, it can be seen that both series look stationary in mean as the majority of the distribution is floating around a fixed value. The variability in the traceplot for $\theta$ seems much smaller that the one for $\sigma$. All in all, the values are limited in within a range, with few outliers.   
+
+The following plots, reguarding the distribution of the two parameters, are presented with an 80% and 90% credibility intervals.   
+The distribution of $\theta$ is simmetrical whiole ,on the other hand, $\sigma$ shows an asymmetry to the right. Given the asymmetry on this distribution, the credibility intervals seem shorter in range, compared to those reguarding $\theta$. 
+
+
+
+
+## Exercise 8
+```{r, warning=FALSE, message=FALSE, results="hide"}
+n=14
+p=0.5
+a=3
+b=3
+
+y=rbinom(n,1,p)
+y
+
+library(rstan)
+library(bayesplot)
+library(rstanarm)
+library(ggplot2)
+
+model_string = "
+data{
+  int N;
+  int y[N];
+  real a;
+  real b;
+}
+parameters{
+  real<lower=0, upper=1> theta;
+}
+model{
+	target+=binomial_lpmf(y|N,theta);
+	target+=beta_lcdf(theta|a,b);
+}
+"
+
+datas=list(N=n,y=y,a=a,b=b)
+fit=stan(model_code=model_string, data=datas, chains=4, iter=2000)
+```
+
+```{r, warning=FALSE, message=FALSE}
+sim=extract(fit)
+traceplot(fit)
+
+ppp = as.matrix(fit)
+plot_title = ggtitle("Posterior distribution",
+                      "with medians and 95% intervals")
+mcmc_areas(ppp, pars = c("theta"), prob = 0.95) + plot_title
+
+```
+
+We have generated an ad-hoc model through $\mathsf{stan}$, used it with adequate parameters, and then we have plotted the traceplot and the posterior distribution of $\theta$.  
+It can be seen from the traceplot that the chains present a stationary trend and they swing regularly around a stable value. Their variance looks constant as well, as all of the values seem to be confined within a fixed range.   
+  
+The plot of the posterior distribution denotes an asymmetry to the right and that only positive values are produced. This curve would seem consistent with a beta or gamma distribution with appropriate parameters: at this point we are not sure whether this was a case of conjugacy of the prior and posterior distribution or not. To evaluate this aspect, it was chosen to compute analytically the value of the posterior distribution.
+
+We know that the prior distribution is $\pi(\theta)\sim Beta(\alpha, \beta)$ with $\alpha=3$ and $\beta=3$. The likelihood is from a Binomial distribution, namely $L(\theta, x)\sim Bi(n,\theta)$.  
+Let's recall that the probability distribution function of a Beta distribution is: $\pi(\theta)=\frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\theta^{\alpha-1}(1-\theta)^{\beta-1}$  
+and that the probability mass function of a Binomial distribution is: $p(x)= {n\choose x}p^x(1-p)^{n-x}$. Hence we can find: $L(\theta,x)=\prod\limits_{i=1}^{n} \theta^{x_i}(1-\theta)^{n-x_i} =\theta^{\sum x_i}(1-\theta)^{n*n- \sum {x_i}}=\theta^{n \bar x}(1-\theta)^{n^2- n\bar x}$
+  
+  
+Bearing in mind that $\pi(\theta|x) \propto \pi(\theta)\times L(\theta,x)$, we can easily compute:
+$\pi(\theta|x)=\theta^{\alpha-1}(1-\theta)^{\beta-1} \theta^{n \bar x }(1-\theta)^{n^2-n \bar x}=\theta^{\alpha+n \bar x-1}(1-\theta)^{\beta +n^2-n \bar x-1}$
+  
+This reflects a Beta distribution with updated parameters.
+$\pi(\theta|x)\sim Beta(\alpha +\sum{x_i},\beta +n^2 -\sum{x_i})$
+This distribution is presented in the plot below.
+```{r, warning=FALSE, message=FALSE}
+x =seq(0,1,0.01)
+a.star = a + n*mean(y)
+b.star = b + n^2 - n*mean(y)
+df = data.frame(x=x, y = dbeta(x, a.star, b.star))
+plot1 = ggplot(data = data.frame(sim$p), aes(x = sim$p)) + geom_density() +
+      geom_line(data = df, aes(x = x, y =y), col = 'red')+xlim(0,0.15)
+plot1
+```
+We can denote a similarity with the distribution plotted at the step above, obtained using the $\mathsf{Stan}$ distribution, hence confirming our theoretical and empirical findings.
